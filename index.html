@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dynamic Tender Dashboard</title>
+    <title>Dynamic Tender & Department Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -18,12 +18,12 @@
             <div>
                 <div class="flex items-center gap-2">
                     <span class="relative flex h-3 w-3">
-                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                        <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-3 w-3 bg-rose-500"></span>
                     </span>
-                    <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Live Tender Dashboard</h1>
+                    <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Departmental Tender Management</h1>
                 </div>
-                <p class="text-sm text-gray-500 dark:text-gray-400">100% dynamic sync with your Google Sheet columns and rows</p>
+                <p class="text-sm text-gray-500 dark:text-gray-400">Live analytics tracking critical milestones and department allocations</p>
             </div>
             <button id="themeToggle" class="p-2.5 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:ring-2 hover:ring-gray-300 dark:hover:ring-gray-600 transition-all">
                 <i class="fa-solid fa-moon dark:hidden text-lg"></i>
@@ -34,20 +34,20 @@
         <section class="bg-white dark:bg-darkCard p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 mb-6 flex flex-col md:flex-row gap-4 items-center justify-between">
             <div class="relative w-full md:w-96">
                 <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
-                <input type="text" id="searchInput" placeholder="Global search across all data..." class="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                <input type="text" id="searchInput" placeholder="Search description, department, status..." class="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
             </div>
         </section>
 
         <div id="loadingIndicator" class="text-center py-12">
             <i class="fa-solid fa-spinner animate-spin text-4xl text-blue-500 mb-3"></i>
-            <p class="text-gray-500 dark:text-gray-400">Fetching latest cloud architecture updates...</p>
+            <p class="text-gray-500 dark:text-gray-400">Streaming dynamic matrix feeds...</p>
         </div>
 
         <div id="dashboardContent" class="hidden">
             <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
                 <div class="bg-white dark:bg-darkCard p-5 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 flex items-center justify-between">
                     <div>
-                        <p class="text-xs font-semibold uppercase tracking-wider text-gray-400">Total Project Value</p>
+                        <p class="text-xs font-semibold uppercase tracking-wider text-gray-400">Total Portfolio Value</p>
                         <h3 id="statTotalValue" class="text-xl font-bold mt-1 text-blue-600 dark:text-blue-400">₹0.00</h3>
                     </div>
                     <div class="p-3 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg">
@@ -56,26 +56,26 @@
                 </div>
                 <div class="bg-white dark:bg-darkCard p-5 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 flex items-center justify-between">
                     <div>
-                        <p class="text-xs font-semibold uppercase tracking-wider text-gray-400">Total Logged Rows</p>
-                        <h3 id="statTotalBids" class="text-xl font-bold mt-1 text-emerald-600 dark:text-emerald-400">0</h3>
+                        <p class="text-xs font-semibold uppercase tracking-wider text-gray-400">Critical Action Required</p>
+                        <h3 id="statCriticalCount" class="text-xl font-bold mt-1 text-rose-600 dark:text-rose-400">0</h3>
                     </div>
-                    <div class="p-3 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-lg">
-                        <i class="fa-solid fa-database text-xl"></i>
+                    <div class="p-3 bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 rounded-lg">
+                        <i class="fa-solid fa-bell text-xl"></i>
                     </div>
                 </div>
                 <div class="bg-white dark:bg-darkCard p-5 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 flex items-center justify-between">
                     <div>
-                        <p class="text-xs font-semibold uppercase tracking-wider text-gray-400">Average Entry Valuation</p>
-                        <h3 id="statAvgValue" class="text-xl font-bold mt-1 text-purple-600 dark:text-purple-400">₹0.00</h3>
+                        <p class="text-xs font-semibold uppercase tracking-wider text-gray-400">Active Branches Tracked</p>
+                        <h3 id="statDeptCount" class="text-xl font-bold mt-1 text-emerald-600 dark:text-emerald-400">0</h3>
                     </div>
-                    <div class="p-3 bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded-lg">
-                        <i class="fa-solid fa-chart-line text-xl"></i>
+                    <div class="p-3 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-lg">
+                        <i class="fa-solid fa-building text-xl"></i>
                     </div>
                 </div>
             </section>
 
             <section class="bg-white dark:bg-darkCard p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 mb-8">
-                <h2 class="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Financial Value Allocation</h2>
+                <h2 class="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Financial Value Allocation by Department</h2>
                 <div class="relative h-80 w-full">
                     <canvas id="valueChart"></canvas>
                 </div>
@@ -83,7 +83,7 @@
 
             <section class="bg-white dark:bg-darkCard rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
                 <div class="p-5 border-b border-gray-100 dark:border-gray-700">
-                    <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Dynamic Matrix Output</h2>
+                    <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Master Data Registry</h2>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="w-full text-left border-collapse">
@@ -96,13 +96,14 @@
                     </table>
                 </div>
                 <div id="noDataMessage" class="hidden text-center py-12 text-gray-400">
-                    <i class="fa-solid fa-folder-open text-4xl mb-3 block"></i> No matching data patterns located.
+                    <i class="fa-solid fa-folder-open text-4xl mb-3 block"></i> No records found matching active query filters.
                 </div>
             </section>
         </div>
     </div>
 
     <script>
+        // Modified CSV access endpoint link generated straight from user sheet 
         const csvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQvU_FekhqmOiiDiE6s7kuITQk_mQwEVTeisjyTIEbDiFkboyqlV4S-lEYHSUtJf2mYhMR8qwN2MXye/pub?output=csv";
         
         let headers = [];
@@ -110,10 +111,21 @@
         let chartInstance = null;
 
         function formatCurrency(val) {
-            return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(val);
+            return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(val);
         }
 
-        // CSV parsing array generator
+        function parseSheetDate(dateStr) {
+            if (!dateStr) return null;
+            const parts = dateStr.split('-');
+            if (parts.length !== 3) return null;
+            const day = parseInt(parts[0], 10);
+            const monthStr = parts[1].toLowerCase().substring(0, 3);
+            const year = parseInt(parts[2], 10);
+            const months = { jan:0, feb:1, mar:2, apr:3, may:4, jun:5, jul:6, aug:7, sep:8, oct:9, nov:10, dec:11 };
+            if (months[monthStr] === undefined) return null;
+            return new Date(year, months[monthStr], day);
+        }
+
         function parseCSV(text) {
             let p = '', c = '', r = [];
             let q = false;
@@ -133,28 +145,26 @@
 
         async function fetchLiveData() {
             try {
-                const response = await fetch(csvUrl + '&t=' + new Date().getTime()); // Bypasses browser caching
+                // Completely dynamic cache-busting to immediately force Google Sheets updates layout engine
+                const response = await fetch(csvUrl + '&nocache=' + Math.random());
                 const csvText = await response.text();
                 
                 globalData = [];
                 let currentIndex = 0;
 
-                // 1. Map Headers Dynamically
                 const headerParsed = parseCSV(csvText);
-                headers = headerParsed.row.filter(h => h !== '');
+                headers = headerParsed.row.map(h => h.trim()).filter(h => h !== '');
                 currentIndex = headerParsed.nextIndex;
 
-                // 2. Map Rows Dynamically based on header count
                 while (currentIndex < csvText.length) {
                     const lineParsed = parseCSV(csvText.substring(currentIndex));
                     if (lineParsed.row.length === 0 || lineParsed.row.join('') === '') {
                         currentIndex += lineParsed.nextIndex;
                         continue;
                     }
-                    
                     let item = {};
                     headers.forEach((header, index) => {
-                        item[header] = lineParsed.row[index] || '';
+                        item[header] = lineParsed.row[index] ? lineParsed.row[index].trim() : '';
                     });
                     globalData.push(item);
                     currentIndex += lineParsed.nextIndex;
@@ -165,31 +175,28 @@
                 
                 renderDashboard(globalData);
             } catch (err) {
-                console.error(err);
+                console.error("Fetch execution error: ", err);
             }
         }
 
         function renderDashboard(data) {
-            // Find which column name stands for value and description dynamically
             const valKey = headers.find(h => h.toLowerCase().includes('value')) || headers[5];
-            const descKey = headers.find(h => h.toLowerCase().includes('description') || h.toLowerCase().includes('name')) || headers[2];
-
-            // Update Metrics
-            const totalValue = data.reduce((acc, curr) => acc + (parseFloat(curr[valKey]?.replace(/[^\d.]/g, '')) || 0), 0);
-            const avgValue = data.length ? (totalValue / data.length) : 0;
+            const descKey = headers.find(h => h.toLowerCase().includes('description')) || headers[2];
+            const todKey = headers.find(h => h.toLowerCase().includes('tod') || h.toLowerCase().includes('opening')) || headers[4];
             
-            document.getElementById('statTotalValue').innerText = formatCurrency(totalValue);
-            document.getElementById('statTotalBids').innerText = data.length;
-            document.getElementById('statAvgValue').innerText = formatCurrency(avgValue);
+            // Check if user added a department column, otherwise fallback safely to 'Type of Case'
+            const deptKey = headers.find(h => h.toLowerCase().includes('dept') || h.toLowerCase().includes('department') || h.toLowerCase().includes('branch')) || headers[6];
 
-            // Render Auto Table Headers
-            const headerRow = document.getElementById('tableHeaderRow');
-            headerRow.innerHTML = headers.map(h => `<th class="py-3.5 px-5">${h}</th>`).join('');
+            let criticalCount = 0;
+            const today = new Date();
 
-            // Render Auto Table Body Rows
+            // Render Table Header dynamically
+            document.getElementById('tableHeaderRow').innerHTML = headers.map(h => `<th class="py-3.5 px-5">${h}</th>`).join('');
+
+            // Render Rows + Inject Smart Alerts Engine
             const tbody = document.getElementById('tableBody');
             tbody.innerHTML = '';
-            
+
             if(data.length === 0) {
                 document.getElementById('noDataMessage').classList.remove('hidden');
                 return;
@@ -201,33 +208,80 @@
                 tr.className = "hover:bg-gray-50/50 dark:hover:bg-gray-800/40 transition-colors";
                 
                 let rowHtml = '';
+                let alertBadge = '';
+
+                // 1. TOD Pending Logic Rules (Flags if past or due within next 3 days)
+                if (row[todKey]) {
+                    const todDate = parseSheetDate(row[todKey]);
+                    if (todDate) {
+                        const timeDiff = todDate.getTime() - today.getTime();
+                        const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
+
+                        if (daysDiff < 0) {
+                            criticalCount++;
+                            alertBadge += `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold bg-rose-100 text-rose-800 dark:bg-rose-950/50 dark:text-rose-400 animate-pulse mt-1"><i class="fa-solid fa-triangle-exclamation"></i> Opening Past Due</span>`;
+                        } else if (daysDiff <= 3) {
+                            criticalCount++;
+                            alertBadge += `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-400 mt-1"><i class="fa-solid fa-clock"></i> TOD due in ${daysDiff} Days</span>`;
+                        }
+                    }
+                }
+
+                // 2. Multi-stage Processing Delay Rules (If file pending > 3 days)
+                // Looks dynamically across all values for indicator terms or checks if text fields explicitly note delay tracking 
+                const containsPendingKeywords = Object.entries(row).some(([key, val]) => 
+                    (key.toLowerCase().includes('status') || key.toLowerCase().includes('stage') || key.toLowerCase().includes('pending')) && 
+                    (val.toLowerCase().includes('pending') || val.toLowerCase().includes('delayed') || val.toLowerCase().includes('stuck'))
+                );
+
+                if (containsPendingKeywords) {
+                    criticalCount++;
+                    alertBadge += `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold bg-orange-100 text-orange-800 dark:bg-orange-950/50 dark:text-orange-400 mt-1"><i class="fa-solid fa-hourglass-half"></i> File Stage Pending >3 Days</span>`;
+                }
+
                 headers.forEach(h => {
                     let cellVal = row[h] || '';
-                    // Highlight numbers if they belong to value column
-                    if(h === valKey) {
+                    if (h === valKey) {
                         const num = parseFloat(cellVal.replace(/[^\d.]/g, '')) || 0;
                         rowHtml += `<td class="py-3 px-5 font-mono font-semibold text-blue-600 dark:text-blue-400">${formatCurrency(num)}</td>`;
+                    } else if (h === descKey) {
+                        rowHtml += `<td class="py-3 px-5 font-semibold text-gray-900 dark:text-white flex flex-col items-start">${cellVal} ${alertBadge}</td>`;
                     } else {
-                        rowHtml += `<td class="py-3 px-5">${cellVal}</td>`;
+                        rowHtml += `<td class="py-3 px-5 text-gray-500 dark:text-gray-400">${cellVal}</td>`;
                     }
                 });
+
                 tr.innerHTML = rowHtml;
                 tbody.appendChild(tr);
             });
 
-            // Update Chart
+            // Calculate Metrics Block
+            const totalValue = data.reduce((acc, curr) => acc + (parseFloat(curr[valKey]?.replace(/[^\d.]/g, '')) || 0), 0);
+            document.getElementById('statTotalValue').innerText = formatCurrency(totalValue);
+            document.getElementById('statCriticalCount').innerText = criticalCount;
+
+            // Group values dynamically for the chart by Department/Case type name
+            const deptGroups = {};
+            data.forEach(item => {
+                const dName = item[deptKey] || 'Unassigned';
+                const vNum = parseFloat(item[valKey]?.replace(/[^\d.]/g, '')) || 0;
+                deptGroups[dName] = (deptGroups[dName] || 0) + vNum;
+            });
+
+            const deptLabels = Object.keys(deptGroups);
+            document.getElementById('statDeptCount').innerText = deptLabels.length;
+
+            // Generate Chart.js Department-wise Distribution
             const ctx = document.getElementById('valueChart').getContext('2d');
             const isDark = document.documentElement.classList.contains('dark');
             if (chartInstance) chartInstance.destroy();
 
-            const chartItems = [...data].slice(0, 8); // Top 8 items
-            
             chartInstance = new Chart(ctx, {
                 type: 'bar',
                 data: {
-                    labels: chartItems.map(item => item[descKey] || 'Item'),
+                    labels: deptLabels,
                     datasets: [{
-                        data: chartItems.map(item => parseFloat(item[valKey]?.replace(/[^\d.]/g, '')) || 0),
+                        data: Object.values(deptGroups),
                         backgroundColor: isDark ? '#3b82f6' : '#2563eb',
                         borderRadius: 6
                     }]
@@ -238,7 +292,13 @@
                     plugins: { legend: { display: false } },
                     scales: {
                         x: { ticks: { color: isDark ? '#94a3b8' : '#64748b' }, grid: { display: false } },
-                        y: { ticks: { color: isDark ? '#94a3b8' : '#64748b' }, grid: { color: isDark ? '#334155' : '#e2e8f0' } }
+                        y: { 
+                            ticks: { 
+                                color: isDark ? '#94a3b8' : '#64748b',
+                                callback: value => '₹' + (value >= 10000000 ? (value/10000000).toFixed(1) + ' Cr' : (value/100000).toFixed(1) + ' L')
+                            }, 
+                            grid: { color: isDark ? '#334155' : '#e2e8f0' } 
+                        }
                     }
                 }
             });
@@ -264,7 +324,7 @@
         window.onload = () => {
             setupEventListeners();
             fetchLiveData();
-            setInterval(fetchLiveData, 30000); // Polls Google sheet background changes every 30 seconds
+            setInterval(fetchLiveData, 20000); // Dynamic automated background check poll loop every 20 seconds
         };
     </script>
 </body>
