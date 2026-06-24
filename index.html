@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dynamic Tender Dashboard with Multi-Tier Alerts</title>
+    <title>Dynamic Tender Dashboard with Isolated Alerts</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -18,12 +18,12 @@
             <div>
                 <div class="flex items-center gap-2">
                     <span class="relative flex h-3 w-3">
-                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                        <span class="relative inline-flex rounded-full h-3 w-3 bg-rose-500"></span>
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-3 w-3 bg-orange-500"></span>
                     </span>
                     <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Departmental Tender Management</h1>
                 </div>
-                <p class="text-sm text-gray-500 dark:text-gray-400">Live analytics tracking critical milestones, status delays, and case counts</p>
+                <p class="text-sm text-gray-500 dark:text-gray-400">Live analytics tracking isolated milestones, status delays, and case counts</p>
             </div>
             <button id="themeToggle" class="p-2.5 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:ring-2 hover:ring-gray-300 dark:hover:ring-gray-600 transition-all">
                 <i class="fa-solid fa-moon dark:hidden text-lg"></i>
@@ -34,12 +34,12 @@
         <section class="bg-white dark:bg-darkCard p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 mb-6 flex flex-col md:flex-row gap-4 items-center justify-between">
             <div class="relative w-full md:w-96">
                 <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
-                <input type="text" id="searchInput" placeholder="Search description, department, status..." class="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                <input type="text" id="searchInput" placeholder="Search description, department, status..." class="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-transparent focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm">
             </div>
         </section>
 
         <div id="loadingIndicator" class="text-center py-12">
-            <i class="fa-solid fa-spinner animate-spin text-4xl text-blue-500 mb-3"></i>
+            <i class="fa-solid fa-spinner animate-spin text-4xl text-orange-500 mb-3"></i>
             <p class="text-gray-500 dark:text-gray-400">Streaming dynamic matrix feeds...</p>
         </div>
 
@@ -56,7 +56,7 @@
                 </div>
                 <div class="bg-white dark:bg-darkCard p-5 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 flex items-center justify-between">
                     <div>
-                        <p class="text-xs font-semibold uppercase tracking-wider text-gray-400">Critical Action Required</p>
+                        <p class="text-xs font-semibold uppercase tracking-wider text-gray-400">Critical Alerts Found</p>
                         <h3 id="statCriticalCount" class="text-xl font-bold mt-1 text-rose-600 dark:text-rose-400">0</h3>
                     </div>
                     <div class="p-3 bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 rounded-lg">
@@ -124,7 +124,9 @@
 
         function parseSheetDate(dateStr) {
             if (!dateStr) return null;
-            const parts = dateStr.split('-');
+            // Clean up possible space remnants
+            const cleanStr = dateStr.trim().replace(/\s+/g, '-');
+            const parts = cleanStr.split('-');
             if (parts.length !== 3) return null;
             const day = parseInt(parts[0], 10);
             const monthStr = parts[1].toLowerCase().substring(0, 3);
@@ -182,7 +184,7 @@
                 
                 renderDashboard(globalData);
             } catch (err) {
-                console.error("Fetch execution error: ", err);
+                console.error("Fetch implementation loop error: ", err);
             }
         }
 
@@ -191,9 +193,15 @@
             const descKey = headers.find(h => h.toLowerCase().includes('description')) || headers[2];
             const todKey = headers.find(h => h.toLowerCase().includes('tod') || h.toLowerCase().includes('opening')) || headers[4];
             const deptKey = headers.find(h => h.toLowerCase().includes('dept') || h.toLowerCase().includes('department') || h.toLowerCase().includes('branch')) || headers[6];
+            
+            // Search field keys used dynamically for workflow age processing delays
+            const daysKey = headers.find(h => h.toLowerCase().includes('day') || h.toLowerCase().includes('duration') || h.toLowerCase().includes('age'));
+            const stageDateKey = headers.find(h => h.toLowerCase().includes('pending since') || h.toLowerCase().includes('stage date') || h.toLowerCase().includes('status date'));
 
-            let criticalCount = 0;
+            let totalAlertsCount = 0;
             const today = new Date();
+            // Create midnight baseline to clear millisecond noise from comparisons
+            const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
 
             document.getElementById('tableHeaderRow').innerHTML = headers.map(h => `<th class="py-3.5 px-5">${h}</th>`).join('');
 
@@ -213,44 +221,75 @@
                 let rowHtml = '';
                 let alertBadges = [];
 
-                // 1. TOD Milestone Trackers
+                // --------------------------------------------------------
+                // CHANNEL 1: ISOLATED TENDER OPENING DATE (TOD) ALERTS
+                // --------------------------------------------------------
                 if (row[todKey]) {
                     const todDate = parseSheetDate(row[todKey]);
                     if (todDate) {
-                        const timeDiff = todDate.getTime() - today.getTime();
+                        const todMidnight = new Date(todDate.getFullYear(), todDate.getMonth(), todDate.getDate());
+                        const timeDiff = todMidnight.getTime() - todayMidnight.getTime();
                         const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
 
                         if (daysDiff < 0) {
-                            criticalCount++;
-                            alertBadges.push(`<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold bg-rose-100 text-rose-800 dark:bg-rose-950/50 dark:text-rose-400 animate-pulse"><i class="fa-solid fa-triangle-exclamation"></i> Opening Past Due</span>`);
+                            totalAlertsCount++;
+                            alertBadges.push(`<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold bg-rose-100 text-rose-800 dark:bg-rose-950/50 dark:text-rose-400 animate-pulse"><i class="fa-solid fa-triangle-exclamation"></i> TOD Past Due</span>`);
                         } else if (daysDiff <= 3) {
-                            criticalCount++;
-                            alertBadges.push(`<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold bg-rose-100 text-rose-800 dark:bg-rose-950/50 dark:text-rose-400"><i class="fa-solid fa-clock"></i> TOD due in ${daysDiff} Days</span>`);
+                            totalAlertsCount++;
+                            alertBadges.push(`<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold bg-orange-100 text-orange-800 dark:bg-orange-950/50 dark:text-orange-400"><i class="fa-solid fa-clock"></i> TOD due in ${daysDiff} Days</span>`);
                         }
                     }
                 }
 
-                // 2. Comprehensive Row Scanner for Status & Age Text (Amber Alert fixes)
-                let textMatchFlag = false;
-                Object.entries(row).forEach(([key, val]) => {
-                    const lowKey = key.toLowerCase();
-                    const lowVal = val.toLowerCase();
+                // --------------------------------------------------------
+                // CHANNEL 2: STAGE PENDING PROCESSING DELAYS (AMBER ALERTS)
+                // --------------------------------------------------------
+                let isDelayedStage = false;
+                let ageInDays = 0;
 
-                    // Check numerical duration flags (e.g. "5 days pending", or column name has "day")
-                    if (lowKey.includes('day') || lowKey.includes('pending') || lowKey.includes('status') || lowKey.includes('stage')) {
-                        const extractedNum = parseInt(lowVal.replace(/[^\d]/g, ''), 10) || 0;
+                // Priority Check A: Use explicit date column ("Pending Since") if it contains a valid date
+                if (stageDateKey && row[stageDateKey]) {
+                    const pendingSinceDate = parseSheetDate(row[stageDateKey]);
+                    if (pendingSinceDate) {
+                        const pendingMidnight = new Date(pendingSinceDate.getFullYear(), pendingSinceDate.getMonth(), pendingSinceDate.getDate());
                         
-                        if (extractedNum > 7 || lowVal.includes('delay') || lowVal.includes('stuck')) {
-                            textMatchFlag = true;
-                            criticalCount++;
-                            alertBadges.push(`<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold bg-rose-100 text-rose-800 dark:bg-rose-950/50 dark:text-rose-400"><i class="fa-solid fa-hourglass-empty"></i> Delayed &gt; 7 Days</span>`);
-                        } else if (extractedNum >= 5 || lowVal.includes('pending')) {
-                            textMatchFlag = true;
-                            criticalCount++;
-                            alertBadges.push(`<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300"><i class="fa-solid fa-triangle-exclamation"></i> Pending &gt; 5 Days</span>`);
+                        // Rule Check: If date is in the future, it shall NOT be counted as an alert
+                        if (pendingMidnight <= todayMidnight) {
+                            const timeDiff = todayMidnight.getTime() - pendingMidnight.getTime();
+                            ageInDays = Math.floor(timeDiff / (1000 * 3600 * 24));
+                            if (ageInDays >= 5) {
+                                isDelayedStage = true;
+                            }
                         }
                     }
-                });
+                }
+
+                // Priority Check B: Fallback to numerical duration strings if direct date logic is absent
+                if (!isDelayedStage && daysKey && row[daysKey]) {
+                    const parsedNum = parseInt(row[daysKey].replace(/[^\d]/g, ''), 10) || 0;
+                    if (parsedNum >= 5) {
+                        ageInDays = parsedNum;
+                        isDelayedStage = true;
+                    }
+                }
+
+                // Inject Amber alert structural badge if milestone thresholds are passed
+                if (isDelayedStage) {
+                    totalAlertsCount++;
+                    alertBadges.push(`<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold bg-amber-100 text-amber-900 dark:bg-amber-950/40 dark:text-amber-300"><i class="fa-solid fa-hourglass-half"></i> Stage Pending (${ageInDays} Days)</span>`);
+                }
+
+                // Generic text catch-all safety parameter (only if no explicit alerts are generated yet)
+                if (alertBadges.length === 0) {
+                    const hasPendingKeyword = Object.entries(row).some(([k, v]) => 
+                        (k.toLowerCase().includes('status') || k.toLowerCase().includes('stage')) && 
+                        v.toLowerCase().includes('pending')
+                    );
+                    if (hasPendingKeyword) {
+                        totalAlertsCount++;
+                        alertBadges.push(`<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold bg-amber-100 text-amber-900 dark:bg-amber-950/40 dark:text-amber-300"><i class="fa-solid fa-folder-minus"></i> Pending Stage</span>`);
+                    }
+                }
 
                 headers.forEach(h => {
                     let cellVal = row[h] || '';
@@ -273,17 +312,17 @@
                 tbody.appendChild(tr);
             });
 
+            // Update Metrics Cards
             const totalValue = data.reduce((acc, curr) => acc + (parseFloat(curr[valKey]?.replace(/[^\d.]/g, '')) || 0), 0);
             document.getElementById('statTotalValue').innerText = formatCurrency(totalValue);
-            document.getElementById('statCriticalCount').innerText = criticalCount;
+            document.getElementById('statCriticalCount').innerText = totalAlertsCount;
 
             // ----------------------------------------------------
-            // CHART ENGINE 1: Pie Chart for Case VOLUME (Counts)
+            // CHART ENGINE 1: Pie Chart (Case Counts per Dept)
             // ----------------------------------------------------
             const deptVolumeGroups = {};
             data.forEach(item => {
                 const dName = item[deptKey] || 'Unassigned';
-                // Increment Case Count Volume by +1 for every row found instead of totaling value
                 deptVolumeGroups[dName] = (deptVolumeGroups[dName] || 0) + 1;
             });
 
@@ -314,9 +353,7 @@
                         },
                         tooltip: {
                             callbacks: {
-                                label: function(context) {
-                                    return ` ${context.label}: ${context.raw} Case(s)`;
-                                }
+                                label: context => ` ${context.label}: ${context.raw} Case(s)`
                             }
                         }
                     }
@@ -324,7 +361,7 @@
             });
 
             // ----------------------------------------------------
-            // CHART ENGINE 2: High Value Cases in ASCENDING Order
+            // CHART ENGINE 2: Ascending ORANGE Bar Chart
             // ----------------------------------------------------
             const barCtx = document.getElementById('valueBarChart').getContext('2d');
             const isDark = document.documentElement.classList.contains('dark');
@@ -344,7 +381,7 @@
                     }),
                     datasets: [{
                         data: sortedAscendingData.map(item => parseFloat(item[valKey]?.replace(/[^\d.]/g, '')) || 0),
-                        backgroundColor: isDark ? '#3b82f6' : '#2563eb',
+                        backgroundColor: '#f97316', // Tailwinds Orange 500 hex palette color code
                         borderRadius: 4
                     }]
                 },
@@ -376,7 +413,7 @@
             });
 
             document.getElementById('themeToggle').addEventListener('click', () => {
-                document.documentElement.toggle('dark');
+                document.documentElement.classList.toggle('dark');
                 localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
                 renderDashboard(globalData);
             });
