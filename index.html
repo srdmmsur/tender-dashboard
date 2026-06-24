@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dynamic Tender & Department Dashboard</title>
+    <title>Dynamic Tender Dashboard with Multi-Tier Alerts</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -23,7 +23,7 @@
                     </span>
                     <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Departmental Tender Management</h1>
                 </div>
-                <p class="text-sm text-gray-500 dark:text-gray-400">Live analytics tracking critical milestones and department allocations</p>
+                <p class="text-sm text-gray-500 dark:text-gray-400">Live analytics tracking critical milestones, status delays, and department allocations</p>
             </div>
             <button id="themeToggle" class="p-2.5 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:ring-2 hover:ring-gray-300 dark:hover:ring-gray-600 transition-all">
                 <i class="fa-solid fa-moon dark:hidden text-lg"></i>
@@ -74,10 +74,18 @@
                 </div>
             </section>
 
-            <section class="bg-white dark:bg-darkCard p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 mb-8">
-                <h2 class="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Financial Value Allocation by Department</h2>
-                <div class="relative h-80 w-full">
-                    <canvas id="valueChart"></canvas>
+            <section class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                <div class="bg-white dark:bg-darkCard p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
+                    <h2 class="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Department Share Breakdown</h2>
+                    <div class="relative h-80 w-full flex justify-center">
+                        <canvas id="deptPieChart"></canvas>
+                    </div>
+                </div>
+                <div class="bg-white dark:bg-darkCard p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
+                    <h2 class="text-lg font-semibold mb-4 text-gray-900 dark:text-white">High Value Cases (Ascending Order)</h2>
+                    <div class="relative h-80 w-full">
+                        <canvas id="valueBarChart"></canvas>
+                    </div>
                 </div>
             </section>
 
@@ -103,12 +111,12 @@
     </div>
 
     <script>
-        // Modified CSV access endpoint link generated straight from user sheet 
         const csvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQvU_FekhqmOiiDiE6s7kuITQk_mQwEVTeisjyTIEbDiFkboyqlV4S-lEYHSUtJf2mYhMR8qwN2MXye/pub?output=csv";
         
         let headers = [];
         let globalData = [];
-        let chartInstance = null;
+        let pieChartInstance = null;
+        let barChartInstance = null;
 
         function formatCurrency(val) {
             return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(val);
@@ -145,7 +153,6 @@
 
         async function fetchLiveData() {
             try {
-                // Completely dynamic cache-busting to immediately force Google Sheets updates layout engine
                 const response = await fetch(csvUrl + '&nocache=' + Math.random());
                 const csvText = await response.text();
                 
@@ -183,17 +190,16 @@
             const valKey = headers.find(h => h.toLowerCase().includes('value')) || headers[5];
             const descKey = headers.find(h => h.toLowerCase().includes('description')) || headers[2];
             const todKey = headers.find(h => h.toLowerCase().includes('tod') || h.toLowerCase().includes('opening')) || headers[4];
-            
-            // Check if user added a department column, otherwise fallback safely to 'Type of Case'
             const deptKey = headers.find(h => h.toLowerCase().includes('dept') || h.toLowerCase().includes('department') || h.toLowerCase().includes('branch')) || headers[6];
+            
+            // Check if there is a tracking column capturing "Pending Days" as a plain number or text string
+            const daysKey = headers.find(h => h.toLowerCase().includes('day') || h.toLowerCase().includes('duration') || h.toLowerCase().includes('age'));
 
             let criticalCount = 0;
             const today = new Date();
 
-            // Render Table Header dynamically
             document.getElementById('tableHeaderRow').innerHTML = headers.map(h => `<th class="py-3.5 px-5">${h}</th>`).join('');
 
-            // Render Rows + Inject Smart Alerts Engine
             const tbody = document.getElementById('tableBody');
             tbody.innerHTML = '';
 
@@ -208,9 +214,9 @@
                 tr.className = "hover:bg-gray-50/50 dark:hover:bg-gray-800/40 transition-colors";
                 
                 let rowHtml = '';
-                let alertBadge = '';
+                let alertBadges = [];
 
-                // 1. TOD Pending Logic Rules (Flags if past or due within next 3 days)
+                // 1. TOD Milestone Trackers
                 if (row[todKey]) {
                     const todDate = parseSheetDate(row[todKey]);
                     if (todDate) {
@@ -219,24 +225,38 @@
 
                         if (daysDiff < 0) {
                             criticalCount++;
-                            alertBadge += `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold bg-rose-100 text-rose-800 dark:bg-rose-950/50 dark:text-rose-400 animate-pulse mt-1"><i class="fa-solid fa-triangle-exclamation"></i> Opening Past Due</span>`;
+                            alertBadges.push(`<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold bg-rose-100 text-rose-800 dark:bg-rose-950/50 dark:text-rose-400 animate-pulse"><i class="fa-solid fa-triangle-exclamation"></i> Opening Past Due</span>`);
                         } else if (daysDiff <= 3) {
                             criticalCount++;
-                            alertBadge += `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-400 mt-1"><i class="fa-solid fa-clock"></i> TOD due in ${daysDiff} Days</span>`;
+                            alertBadges.push(`<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold bg-rose-100 text-rose-800 dark:bg-rose-950/50 dark:text-rose-400"><i class="fa-solid fa-clock"></i> TOD due in ${daysDiff} Days</span>`);
                         }
                     }
                 }
 
-                // 2. Multi-stage Processing Delay Rules (If file pending > 3 days)
-                // Looks dynamically across all values for indicator terms or checks if text fields explicitly note delay tracking 
-                const containsPendingKeywords = Object.entries(row).some(([key, val]) => 
-                    (key.toLowerCase().includes('status') || key.toLowerCase().includes('stage') || key.toLowerCase().includes('pending')) && 
-                    (val.toLowerCase().includes('pending') || val.toLowerCase().includes('delayed') || val.toLowerCase().includes('stuck'))
-                );
+                // 2. Process Age Tracking Engine (Amber Alert for >5 days, Red Alert for >7 days)
+                let pendingDaysNum = 0;
+                if (daysKey && row[daysKey]) {
+                    pendingDaysNum = parseInt(row[daysKey].replace(/[^\d]/g, ''), 10) || 0;
+                }
 
-                if (containsPendingKeywords) {
+                if (pendingDaysNum > 7) {
                     criticalCount++;
-                    alertBadge += `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold bg-orange-100 text-orange-800 dark:bg-orange-950/50 dark:text-orange-400 mt-1"><i class="fa-solid fa-hourglass-half"></i> File Stage Pending >3 Days</span>`;
+                    alertBadges.push(`<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold bg-rose-100 text-rose-800 dark:bg-rose-950/50 dark:text-rose-400"><i class="fa-solid fa-hourglass-empty"></i> Delayed > 7 Days</span>`);
+                } else if (pendingDaysNum > 5) {
+                    criticalCount++; // Increment warning counters
+                    alertBadges.push(`<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-400"><i class="fa-solid fa-triangle-exclamation"></i> Pending > 5 Days</span>`);
+                }
+
+                // Backup generic scanning for cases labeled 'Pending' if numerical column is empty
+                if (alertBadges.length === 0) {
+                    const hasPendingText = Object.entries(row).some(([key, val]) => 
+                        (key.toLowerCase().includes('status') || key.toLowerCase().includes('stage')) && 
+                        (val.toLowerCase().includes('pending') || val.toLowerCase().includes('delayed'))
+                    );
+                    if (hasPendingText) {
+                        criticalCount++;
+                        alertBadges.push(`<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-400"><i class="fa-solid fa-folder-minus"></i> File Stage Pending</span>`);
+                    }
                 }
 
                 headers.forEach(h => {
@@ -245,7 +265,12 @@
                         const num = parseFloat(cellVal.replace(/[^\d.]/g, '')) || 0;
                         rowHtml += `<td class="py-3 px-5 font-mono font-semibold text-blue-600 dark:text-blue-400">${formatCurrency(num)}</td>`;
                     } else if (h === descKey) {
-                        rowHtml += `<td class="py-3 px-5 font-semibold text-gray-900 dark:text-white flex flex-col items-start">${cellVal} ${alertBadge}</td>`;
+                        rowHtml += `<td class="py-3 px-5 font-semibold text-gray-900 dark:text-white">
+                                        <div class="flex flex-col items-start gap-1">
+                                            <span>${cellVal}</span>
+                                            <div class="flex flex-wrap gap-1">${alertBadges.join('')}</div>
+                                        </div>
+                                    </td>`;
                     } else {
                         rowHtml += `<td class="py-3 px-5 text-gray-500 dark:text-gray-400">${cellVal}</td>`;
                     }
@@ -255,12 +280,11 @@
                 tbody.appendChild(tr);
             });
 
-            // Calculate Metrics Block
             const totalValue = data.reduce((acc, curr) => acc + (parseFloat(curr[valKey]?.replace(/[^\d.]/g, '')) || 0), 0);
             document.getElementById('statTotalValue').innerText = formatCurrency(totalValue);
             document.getElementById('statCriticalCount').innerText = criticalCount;
 
-            // Group values dynamically for the chart by Department/Case type name
+            // Pie Chart Configuration
             const deptGroups = {};
             data.forEach(item => {
                 const dName = item[deptKey] || 'Unassigned';
@@ -271,19 +295,53 @@
             const deptLabels = Object.keys(deptGroups);
             document.getElementById('statDeptCount').innerText = deptLabels.length;
 
-            // Generate Chart.js Department-wise Distribution
-            const ctx = document.getElementById('valueChart').getContext('2d');
-            const isDark = document.documentElement.classList.contains('dark');
-            if (chartInstance) chartInstance.destroy();
+            const pieCtx = document.getElementById('deptPieChart').getContext('2d');
+            if (pieChartInstance) pieChartInstance.destroy();
 
-            chartInstance = new Chart(ctx, {
-                type: 'bar',
+            pieChartInstance = new Chart(pieCtx, {
+                type: 'pie',
                 data: {
                     labels: deptLabels,
                     datasets: [{
                         data: Object.values(deptGroups),
+                        backgroundColor: ['#2563eb', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#3b82f6', '#14b8a6'],
+                        borderWidth: 2,
+                        borderColor: document.documentElement.classList.contains('dark') ? '#1e293b' : '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { color: document.documentElement.classList.contains('dark') ? '#94a3b8' : '#475569' }
+                        }
+                    }
+                }
+            });
+
+            // Ascending Bar Chart configuration
+            const barCtx = document.getElementById('valueBarChart').getContext('2d');
+            const isDark = document.documentElement.classList.contains('dark');
+            if (barChartInstance) barChartInstance.destroy();
+
+            const sortedAscendingData = [...data]
+                .sort((a, b) => (parseFloat(b[valKey]?.replace(/[^\d.]/g, '')) || 0) - (parseFloat(a[valKey]?.replace(/[^\d.]/g, '')) || 0))
+                .slice(0, 8)
+                .reverse(); 
+
+            barChartInstance = new Chart(barCtx, {
+                type: 'bar',
+                data: {
+                    labels: sortedAscendingData.map(item => {
+                        const txt = item[descKey] || 'Item';
+                        return txt.length > 15 ? txt.substring(0, 13) + '...' : txt;
+                    }),
+                    datasets: [{
+                        data: sortedAscendingData.map(item => parseFloat(item[valKey]?.replace(/[^\d.]/g, '')) || 0),
                         backgroundColor: isDark ? '#3b82f6' : '#2563eb',
-                        borderRadius: 6
+                        borderRadius: 4
                     }]
                 },
                 options: {
@@ -324,7 +382,7 @@
         window.onload = () => {
             setupEventListeners();
             fetchLiveData();
-            setInterval(fetchLiveData, 20000); // Dynamic automated background check poll loop every 20 seconds
+            setInterval(fetchLiveData, 20000);
         };
     </script>
 </body>
