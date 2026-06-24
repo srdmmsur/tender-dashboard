@@ -23,7 +23,7 @@
                     </span>
                     <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Departmental Tender Management</h1>
                 </div>
-                <p class="text-sm text-gray-500 dark:text-gray-400">Live analytics tracking critical milestones, status delays, and department allocations</p>
+                <p class="text-sm text-gray-500 dark:text-gray-400">Live analytics tracking critical milestones, status delays, and case counts</p>
             </div>
             <button id="themeToggle" class="p-2.5 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:ring-2 hover:ring-gray-300 dark:hover:ring-gray-600 transition-all">
                 <i class="fa-solid fa-moon dark:hidden text-lg"></i>
@@ -76,7 +76,7 @@
 
             <section class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
                 <div class="bg-white dark:bg-darkCard p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
-                    <h2 class="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Department Share Breakdown</h2>
+                    <h2 class="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Tender Case Volume per Department</h2>
                     <div class="relative h-80 w-full flex justify-center">
                         <canvas id="deptPieChart"></canvas>
                     </div>
@@ -191,9 +191,6 @@
             const descKey = headers.find(h => h.toLowerCase().includes('description')) || headers[2];
             const todKey = headers.find(h => h.toLowerCase().includes('tod') || h.toLowerCase().includes('opening')) || headers[4];
             const deptKey = headers.find(h => h.toLowerCase().includes('dept') || h.toLowerCase().includes('department') || h.toLowerCase().includes('branch')) || headers[6];
-            
-            // Check if there is a tracking column capturing "Pending Days" as a plain number or text string
-            const daysKey = headers.find(h => h.toLowerCase().includes('day') || h.toLowerCase().includes('duration') || h.toLowerCase().includes('age'));
 
             let criticalCount = 0;
             const today = new Date();
@@ -233,31 +230,27 @@
                     }
                 }
 
-                // 2. Process Age Tracking Engine (Amber Alert for >5 days, Red Alert for >7 days)
-                let pendingDaysNum = 0;
-                if (daysKey && row[daysKey]) {
-                    pendingDaysNum = parseInt(row[daysKey].replace(/[^\d]/g, ''), 10) || 0;
-                }
+                // 2. Comprehensive Row Scanner for Status & Age Text (Amber Alert fixes)
+                let textMatchFlag = false;
+                Object.entries(row).forEach(([key, val]) => {
+                    const lowKey = key.toLowerCase();
+                    const lowVal = val.toLowerCase();
 
-                if (pendingDaysNum > 7) {
-                    criticalCount++;
-                    alertBadges.push(`<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold bg-rose-100 text-rose-800 dark:bg-rose-950/50 dark:text-rose-400"><i class="fa-solid fa-hourglass-empty"></i> Delayed > 7 Days</span>`);
-                } else if (pendingDaysNum > 5) {
-                    criticalCount++; // Increment warning counters
-                    alertBadges.push(`<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-400"><i class="fa-solid fa-triangle-exclamation"></i> Pending > 5 Days</span>`);
-                }
-
-                // Backup generic scanning for cases labeled 'Pending' if numerical column is empty
-                if (alertBadges.length === 0) {
-                    const hasPendingText = Object.entries(row).some(([key, val]) => 
-                        (key.toLowerCase().includes('status') || key.toLowerCase().includes('stage')) && 
-                        (val.toLowerCase().includes('pending') || val.toLowerCase().includes('delayed'))
-                    );
-                    if (hasPendingText) {
-                        criticalCount++;
-                        alertBadges.push(`<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-400"><i class="fa-solid fa-folder-minus"></i> File Stage Pending</span>`);
+                    // Check numerical duration flags (e.g. "5 days pending", or column name has "day")
+                    if (lowKey.includes('day') || lowKey.includes('pending') || lowKey.includes('status') || lowKey.includes('stage')) {
+                        const extractedNum = parseInt(lowVal.replace(/[^\d]/g, ''), 10) || 0;
+                        
+                        if (extractedNum > 7 || lowVal.includes('delay') || lowVal.includes('stuck')) {
+                            textMatchFlag = true;
+                            criticalCount++;
+                            alertBadges.push(`<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold bg-rose-100 text-rose-800 dark:bg-rose-950/50 dark:text-rose-400"><i class="fa-solid fa-hourglass-empty"></i> Delayed &gt; 7 Days</span>`);
+                        } else if (extractedNum >= 5 || lowVal.includes('pending')) {
+                            textMatchFlag = true;
+                            criticalCount++;
+                            alertBadges.push(`<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300"><i class="fa-solid fa-triangle-exclamation"></i> Pending &gt; 5 Days</span>`);
+                        }
                     }
-                }
+                });
 
                 headers.forEach(h => {
                     let cellVal = row[h] || '';
@@ -284,15 +277,17 @@
             document.getElementById('statTotalValue').innerText = formatCurrency(totalValue);
             document.getElementById('statCriticalCount').innerText = criticalCount;
 
-            // Pie Chart Configuration
-            const deptGroups = {};
+            // ----------------------------------------------------
+            // CHART ENGINE 1: Pie Chart for Case VOLUME (Counts)
+            // ----------------------------------------------------
+            const deptVolumeGroups = {};
             data.forEach(item => {
                 const dName = item[deptKey] || 'Unassigned';
-                const vNum = parseFloat(item[valKey]?.replace(/[^\d.]/g, '')) || 0;
-                deptGroups[dName] = (deptGroups[dName] || 0) + vNum;
+                // Increment Case Count Volume by +1 for every row found instead of totaling value
+                deptVolumeGroups[dName] = (deptVolumeGroups[dName] || 0) + 1;
             });
 
-            const deptLabels = Object.keys(deptGroups);
+            const deptLabels = Object.keys(deptVolumeGroups);
             document.getElementById('statDeptCount').innerText = deptLabels.length;
 
             const pieCtx = document.getElementById('deptPieChart').getContext('2d');
@@ -303,7 +298,7 @@
                 data: {
                     labels: deptLabels,
                     datasets: [{
-                        data: Object.values(deptGroups),
+                        data: Object.values(deptVolumeGroups),
                         backgroundColor: ['#2563eb', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#3b82f6', '#14b8a6'],
                         borderWidth: 2,
                         borderColor: document.documentElement.classList.contains('dark') ? '#1e293b' : '#fff'
@@ -316,12 +311,21 @@
                         legend: {
                             position: 'bottom',
                             labels: { color: document.documentElement.classList.contains('dark') ? '#94a3b8' : '#475569' }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return ` ${context.label}: ${context.raw} Case(s)`;
+                                }
+                            }
                         }
                     }
                 }
             });
 
-            // Ascending Bar Chart configuration
+            // ----------------------------------------------------
+            // CHART ENGINE 2: High Value Cases in ASCENDING Order
+            // ----------------------------------------------------
             const barCtx = document.getElementById('valueBarChart').getContext('2d');
             const isDark = document.documentElement.classList.contains('dark');
             if (barChartInstance) barChartInstance.destroy();
@@ -372,7 +376,7 @@
             });
 
             document.getElementById('themeToggle').addEventListener('click', () => {
-                document.documentElement.classList.toggle('dark');
+                document.documentElement.toggle('dark');
                 localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
                 renderDashboard(globalData);
             });
