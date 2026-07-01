@@ -10,9 +10,8 @@
 <body class="bg-gray-100 p-5">
 
     <div class="max-w-6xl mx-auto">
-        <h1 class="text-3xl font-bold mb-6 text-gray-800">Nagarbhatti Tender Registry (High Value Focus)</h1>
+        <h1 class="text-3xl font-bold mb-6 text-gray-800">Nagarbhatti Tender Registry</h1>
 
-        <!-- Chart Section -->
         <div class="bg-white p-6 rounded-lg shadow mb-8">
             <h2 class="text-xl font-semibold mb-4">Top 10 Highest Value Cases</h2>
             <div class="h-80">
@@ -20,7 +19,6 @@
             </div>
         </div>
 
-        <!-- Data Table Section -->
         <div class="bg-white p-6 rounded-lg shadow overflow-x-auto">
             <h2 class="text-xl font-semibold mb-4">Full List (Sorted: High to Low)</h2>
             <table class="w-full text-left border-collapse">
@@ -38,7 +36,7 @@
         let headers = [];
         let chart = null;
 
-        // Formatter for Indian Currency
+        // Indian Rupee Formatter
         const formatINR = (val) => new Intl.NumberFormat('en-IN', {
             style: 'currency',
             currency: 'INR',
@@ -64,26 +62,25 @@
             const valKey = headers.find(h => h.toLowerCase().includes('value')) || headers[5];
             const descKey = headers.find(h => h.toLowerCase().includes('desc')) || headers[2];
 
-            // 1. SORT DESCENDING: Highest value first
+            // SORT DESCENDING: Highest value first
             const sorted = [...globalData].sort((a, b) => {
                 const valA = parseFloat(a[valKey]?.replace(/[^\d.]/g, '')) || 0;
                 const valB = parseFloat(b[valKey]?.replace(/[^\d.]/g, '')) || 0;
                 return valB - valA; 
             });
 
-            // 2. Build Table with 50 Lakh+ Highlight
+            // Build Table
             const headRow = document.getElementById('tableHeader');
             headRow.innerHTML = headers.map(h => `<th class="p-3">${h}</th>`).join('');
             
             const tbody = document.getElementById('tableBody');
             tbody.innerHTML = sorted.map(row => {
                 const val = parseFloat(row[valKey]?.replace(/[^\d.]/g, '')) || 0;
-                const isHighValue = val >= 5000000;
+                const isHighValue = val >= 5000000; // 50 Lakh Highlight
                 
                 return `
                     <tr class="border-b hover:bg-gray-50 ${isHighValue ? 'bg-yellow-100 font-bold' : ''}">
                         ${headers.map(h => {
-                            // Format cell if it contains the value key
                             const cellValue = row[h] || '';
                             const displayVal = (h === valKey) ? formatINR(val) : cellValue;
                             return `<td class="p-3">${displayVal}</td>`;
@@ -92,7 +89,7 @@
                 `;
             }).join('');
 
-            // 3. Build Chart (Top 10 highest)
+            // Build Chart
             const ctx = document.getElementById('valueBarChart').getContext('2d');
             if (chart) chart.destroy();
             
